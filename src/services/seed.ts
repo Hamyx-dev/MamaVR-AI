@@ -4,8 +4,8 @@
  */
 import * as Crypto from 'expo-crypto';
 
-import { hashPassword } from './auth';
 import { db, getSetting, nowIso, setSetting } from './database';
+import { isSupabaseConfigured } from './supabase';
 import { seedTeamMembers } from './team';
 
 const SEED_VERSION = '1';
@@ -108,32 +108,14 @@ export async function seedIfNeeded(): Promise<void> {
   if (getSetting('seed_version') === SEED_VERSION) return;
   const now = nowIso();
 
-  const facilityId = Crypto.randomUUID();
-  db.runSync(
-    `INSERT OR IGNORE INTO facilities (id, name, type, district, region, logo_uri, created_at)
-     VALUES (?, 'Demo CHPS Compound', 'chps_compound', 'Tamale Metropolitan', 'Northern Region', NULL, ?)`,
-    [facilityId, now]
-  );
-
-  const seedUser = async (
-    username: string,
-    email: string,
-    fullName: string,
-    role: 'admin' | 'healthcare_worker',
-    password: string
-  ) => {
-    const salt = Crypto.randomUUID();
-    const hash = await hashPassword(password, salt);
+  if (!isSupabaseConfigured()) {
+    const facilityId = Crypto.randomUUID();
     db.runSync(
-      `INSERT OR IGNORE INTO users (id, username, email, full_name, role, status, facility_id, avatar_uri, password_hash, salt, created_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, NULL, ?, ?, ?)`,
-      [Crypto.randomUUID(), username, email, fullName, role, facilityId, hash, salt, now]
+      `INSERT OR IGNORE INTO facilities (id, name, type, district, region, logo_uri, created_at)
+       VALUES (?, 'Demo CHPS Compound', 'chps_compound', 'Tamale Metropolitan', 'Northern Region', NULL, ?)`,
+      [facilityId, now]
     );
-  };
-
-  // Demo credentials for the hackathon MVP — replace before any real deployment.
-  await seedUser('admin', 'admin@mamavr.org', 'System Administrator', 'admin', 'Admin@2026');
-  await seedUser('midwife', 'midwife@mamavr.org', 'Asana Mohammed (Midwife)', 'healthcare_worker', 'Midwife@2026');
+  }
 
   for (const module of VR_MODULES) {
     db.runSync(

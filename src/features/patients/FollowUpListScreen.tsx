@@ -31,7 +31,12 @@ export function FollowUpListScreen() {
         Follow-up Visits
       </ScreenTitle>
       {followUps.length === 0 ? (
-        <EmptyState icon="calendar-outline" title="No Follow-ups Scheduled" message="Completed consultations automatically schedule the next review." />
+        <EmptyState
+          icon="calendar-outline"
+          title="No Follow-ups Scheduled"
+          message="Completed consultations automatically schedule the next review."
+          illustration="followUp"
+        />
       ) : (
         followUps.map((followUp) => {
           const overdue = followUp.dueDate < today;

@@ -2,6 +2,7 @@
   "expo": {
     "name": "MamaVR AI",
     "slug": "mamavr-ai",
+    "scheme": "mamavr",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",

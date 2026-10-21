@@ -10,6 +10,7 @@ web-build/
 *.mobileprovision
 .env
 .env.*
+supabase/.temp/
 .DS_Store
 npm-debug.*
 yarn-debug.*

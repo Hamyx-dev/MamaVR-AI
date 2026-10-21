@@ -11,6 +11,7 @@ import { AdminTabParamList, AuthStackParamList, HealthcareTabParamList, MainStac
 import { ForgotPasswordScreen } from '@/features/authentication/ForgotPasswordScreen';
 import { LoginScreen } from '@/features/authentication/LoginScreen';
 import { SplashScreen } from '@/features/authentication/SplashScreen';
+import { PasswordRecoveryScreen } from '@/features/authentication/PasswordRecoveryScreen';
 
 import { HealthcareDashboard } from '@/features/dashboard/HealthcareDashboard';
 import { NotificationsScreen } from '@/features/notifications/NotificationsScreen';
@@ -106,7 +107,7 @@ function AdminTabNavigator() {
 
 export function RootNavigator() {
   const { theme } = useTheme();
-  const { user, initializing } = useAuth();
+  const { user, initializing, passwordRecovery } = useAuth();
 
   const navTheme = theme.dark
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: theme.colors.background, card: theme.colors.surface, primary: theme.colors.primary } }
@@ -120,8 +121,14 @@ export function RootNavigator() {
     <NavigationContainer theme={navTheme}>
       {!user ? (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-          <AuthStack.Screen name="Login" component={LoginScreen} />
-          <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          {passwordRecovery ? (
+            <AuthStack.Screen name="PasswordRecovery" component={PasswordRecoveryScreen} />
+          ) : (
+            <>
+              <AuthStack.Screen name="Login" component={LoginScreen} />
+              <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            </>
+          )}
         </AuthStack.Navigator>
       ) : (
         <MainStack.Navigator

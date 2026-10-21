@@ -49,7 +49,7 @@ export function UserFormScreen() {
       setError(result);
       return;
     }
-    Alert.alert('User Created', `${fullName} can now log in with the username "${username.trim()}".`, [
+    Alert.alert('User Created', `${fullName} can now sign in with ${email.trim()}.`, [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
   };

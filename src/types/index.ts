@@ -269,4 +269,5 @@ export interface MediaAsset {
   sizeBytes: number | null;
   uploaded: boolean;
   createdAt: string;
+  remotePath: string | null;
 }

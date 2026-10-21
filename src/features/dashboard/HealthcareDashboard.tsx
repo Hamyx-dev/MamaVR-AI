@@ -6,6 +6,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Screen, StatCard } from '@/components/ui';
+import { IllustrationScene } from '@/components/IllustrationScene';
 import { useAuth } from '@/hooks/useAuth';
 import { countHighRiskPatients } from '@/services/assessments';
 import { getBrandLogoUri } from '@/services/branding';
@@ -21,7 +22,7 @@ type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 export function HealthcareDashboard() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigation = useNavigation<Nav>();
   const [stats, setStats] = useState({ visits: 0, highRisk: 0, referrals: 0, pendingSync: 0 });
   const [syncing, setSyncing] = useState(false);
@@ -44,6 +45,7 @@ export function HealthcareDashboard() {
     const result = await syncNow(user);
     setSyncing(false);
     refresh();
+    if (result.ok) refreshUser();
     if (result.ok) {
       Alert.alert(
         'Synchronization Successful',
@@ -61,6 +63,20 @@ export function HealthcareDashboard() {
 
   return (
     <Screen>
+      <Card style={styles.careBanner}>
+        <View style={styles.careBannerCopy}>
+          <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '700', letterSpacing: 0.6 }}>
+            MATERNAL CARE, CONNECTED
+          </Text>
+          <Text style={[styles.careBannerTitle, { color: theme.colors.text }]}>
+            Every visit builds on the last.
+          </Text>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+            Keep patient records and follow-up care together, even offline.
+          </Text>
+        </View>
+        <IllustrationScene kind="care" compact />
+      </Card>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: typography.caption, color: theme.colors.textSecondary }}>
@@ -124,22 +140,47 @@ export function HealthcareDashboard() {
         />
       </View>
 
-      {stats.pendingSync > 0 ? (
-        <Card style={{ marginTop: spacing.md }}>
-          <Text style={{ color: theme.colors.text, fontSize: typography.body, fontWeight: '600' }}>
-            {stats.pendingSync} record{stats.pendingSync === 1 ? '' : 's'} ready to sync
-          </Text>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginBottom: spacing.sm }}>
-            Your work is stored safely offline and will be encrypted during synchronization.
-          </Text>
-          <Button title="Sync Now" icon="cloud-upload-outline" onPress={handleSync} loading={syncing} />
-        </Card>
-      ) : null}
+      <Card style={{ marginTop: spacing.md }}>
+        <Text style={{ color: theme.colors.text, fontSize: typography.body, fontWeight: '600' }}>
+          {stats.pendingSync > 0
+            ? `${stats.pendingSync} record${stats.pendingSync === 1 ? '' : 's'} ready to sync`
+            : 'Check for cloud updates'}
+        </Text>
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginBottom: spacing.sm }}>
+          Records are saved on this device first. Supabase access is protected by your account and database policies.
+        </Text>
+        <Button
+          title={stats.pendingSync > 0 ? 'Sync Now' : 'Check for Updates'}
+          icon="cloud-upload-outline"
+          onPress={handleSync}
+          loading={syncing}
+        />
+      </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  careBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  careBannerCopy: {
+    flex: 1,
+    paddingVertical: spacing.xs,
+  },
+  careBannerTitle: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '700',
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

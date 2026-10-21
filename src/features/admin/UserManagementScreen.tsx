@@ -21,7 +21,13 @@ export function UserManagementScreen() {
   const navigation = useNavigation<Nav>();
   const [users, setUsers] = useState<User[]>([]);
 
-  const refresh = useCallback(() => setUsers(listUsers()), []);
+  const refresh = useCallback(() => {
+    listUsers()
+      .then(setUsers)
+      .catch((error: unknown) =>
+        Alert.alert('Unable to Load Users', error instanceof Error ? error.message : 'Please try again.')
+      );
+  }, []);
   useFocusEffect(refresh);
 
   const handleToggleStatus = (target: User) => {
@@ -39,9 +45,16 @@ export function UserManagementScreen() {
         {
           text: suspending ? 'Suspend' : 'Reactivate',
           style: suspending ? 'destructive' : 'default',
-          onPress: () => {
-            setUserStatus(admin, target.id, suspending ? 'suspended' : 'active');
-            refresh();
+          onPress: async () => {
+            try {
+              await setUserStatus(admin, target.id, suspending ? 'suspended' : 'active');
+              refresh();
+            } catch (error) {
+              Alert.alert(
+                'Unable to Update User',
+                error instanceof Error ? error.message : 'Please try again.'
+              );
+            }
           },
         },
       ]

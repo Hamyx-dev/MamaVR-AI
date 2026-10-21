@@ -114,6 +114,9 @@ export function listTeamMembers(): TeamMember[] {
 
 /** Admin: attach or replace a member's professional passport photograph. */
 export function updateTeamMemberPhoto(admin: User, memberId: string, photoUri: string | null): void {
-  db.runSync('UPDATE team_members SET photo_uri = ? WHERE id = ?', [photoUri, memberId]);
+  db.runSync(
+    "UPDATE team_members SET photo_uri = ?, sync_status = 'pending' WHERE id = ?",
+    [photoUri, memberId]
+  );
   logAudit(admin, 'TEAM_UPDATED', `Photo ${photoUri ? 'uploaded' : 'removed'} for team member ${memberId}`);
 }

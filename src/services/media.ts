@@ -71,6 +71,7 @@ export async function persistMedia(
     sizeBytes,
     uploaded: false,
     createdAt: nowIso(),
+    remotePath: null,
   };
 
   db.runSync(
@@ -141,6 +142,7 @@ interface MediaRow {
   size_bytes: number | null;
   uploaded: number;
   created_at: string;
+  remote_path: string | null;
 }
 
 function mapRow(row: MediaRow): MediaAsset {
@@ -154,6 +156,7 @@ function mapRow(row: MediaRow): MediaAsset {
     sizeBytes: row.size_bytes,
     uploaded: row.uploaded === 1,
     createdAt: row.created_at,
+    remotePath: row.remote_path,
   };
 }
 
@@ -164,8 +167,11 @@ export function getPendingUploads(): MediaAsset[] {
     .map(mapRow);
 }
 
-export function markUploaded(assetId: string): void {
-  db.runSync('UPDATE media_assets SET uploaded = 1 WHERE id = ?', [assetId]);
+export function markUploaded(assetId: string, remotePath: string): void {
+  db.runSync(
+    "UPDATE media_assets SET uploaded = 1, remote_path = ?, sync_status = 'pending' WHERE id = ?",
+    [remotePath, assetId]
+  );
 }
 
 export function countPendingUploads(): number {

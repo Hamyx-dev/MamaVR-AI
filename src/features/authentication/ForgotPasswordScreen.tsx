@@ -11,32 +11,24 @@ export function ForgotPasswordScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const handleReset = async () => {
     setError(null);
-    if (newPassword !== confirm) {
-      setError('Passwords do not match.');
-      return;
-    }
     setBusy(true);
-    const result = await resetPassword(email, newPassword);
+    const result = await resetPassword(email);
     setBusy(false);
     if (result) {
       setError(result);
       return;
     }
-    Alert.alert('Password Reset', 'Your password has been updated. Please log in again.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    Alert.alert('Check Your Email', 'If the account exists, Supabase will email a password reset link.');
   };
 
   return (
     <Screen>
-      <ScreenTitle subtitle="Verify your identity with the email registered to your account, then choose a new password.">
+      <ScreenTitle subtitle="Enter your account email and Supabase will send you a password reset link.">
         Forgot Password
       </ScreenTitle>
       <Card>
@@ -48,27 +40,12 @@ export function ForgotPasswordScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
         />
-        <Field
-          label="New Password"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          helper="At least 8 characters with uppercase, lowercase, a number and a special character."
-        />
-        <Field
-          label="Confirm New Password"
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-          autoCapitalize="none"
-        />
         {error ? (
           <Text style={{ color: theme.colors.danger, marginBottom: spacing.sm, fontSize: typography.caption }}>
             {error}
           </Text>
         ) : null}
-        <Button title="Reset Password" onPress={handleReset} loading={busy} icon="key-outline" />
+        <Button title="Send Reset Email" onPress={handleReset} loading={busy} icon="mail-outline" />
         <Button title="Back to Login" variant="secondary" onPress={() => navigation.goBack()} />
       </Card>
     </Screen>

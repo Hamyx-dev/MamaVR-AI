@@ -93,7 +93,8 @@ export function PatientSearchScreen() {
           <EmptyState
             icon="people-outline"
             title="No Patients Found"
-            message="Register a new patient to begin."
+            message={query.trim() ? 'Try another name, phone number, or patient ID.' : 'Register a patient to start their care record.'}
+            illustration={query.trim() ? undefined : 'care'}
           />
         }
       />

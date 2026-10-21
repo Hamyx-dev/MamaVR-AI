@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeContext';
 import { radius, spacing, typography } from '@/theme/theme';
 import { RiskLevel } from '@/types';
+import { IllustrationKind, IllustrationScene } from './IllustrationScene';
 
 export function Screen({
   children,
@@ -339,15 +340,21 @@ export function EmptyState({
   icon,
   title,
   message,
+  illustration,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   message: string;
+  illustration?: IllustrationKind;
 }) {
   const { theme } = useTheme();
   return (
     <View style={styles.emptyState}>
-      <Ionicons name={icon} size={48} color={theme.colors.textSecondary} />
+      {illustration ? (
+        <IllustrationScene kind={illustration} />
+      ) : (
+        <Ionicons name={icon} size={48} color={theme.colors.textSecondary} />
+      )}
       <Text style={{ fontSize: typography.cardTitle, fontWeight: '600', color: theme.colors.text, marginTop: spacing.md }}>
         {title}
       </Text>

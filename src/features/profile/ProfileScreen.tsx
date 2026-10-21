@@ -73,8 +73,8 @@ export function ProfileScreen() {
               ownerType="user_avatar"
               ownerId={user.id}
               value={user.avatarUri}
-              onChange={(uri) => {
-                updateAvatar(user, uri);
+              onChange={async (uri) => {
+                await updateAvatar(user, uri);
                 refreshUser();
                 setEditingAvatar(false);
               }}
@@ -153,7 +153,22 @@ export function ProfileScreen() {
         onPress={() =>
           Alert.alert('Log Out', 'Are you sure you want to log out?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Log Out', style: 'destructive', onPress: () => logout() },
+            {
+              text: 'Log Out',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await logout();
+                } catch (error) {
+                  Alert.alert(
+                    'Signed Out Locally',
+                    error instanceof Error
+                      ? `Your local session was cleared, but Supabase could not confirm sign-out: ${error.message}`
+                      : 'Your local session was cleared, but Supabase could not confirm sign-out.'
+                  );
+                }
+              },
+            },
           ])
         }
         style={{ marginTop: spacing.md }}

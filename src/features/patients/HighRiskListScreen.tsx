@@ -31,6 +31,7 @@ export function HighRiskListScreen() {
           icon="shield-checkmark-outline"
           title="No High-Risk Patients"
           message="No patient currently has a high-risk assessment."
+          illustration="allClear"
         />
       ) : (
         entries.map(({ assessment, patientName }) => (

@@ -72,6 +72,9 @@ export function createFacility(admin: User, input: FacilityInput): Facility {
 }
 
 export function updateFacilityLogo(admin: User, facilityId: string, logoUri: string | null): void {
-  db.runSync('UPDATE facilities SET logo_uri = ? WHERE id = ?', [logoUri, facilityId]);
+  db.runSync(
+    "UPDATE facilities SET logo_uri = ?, sync_status = 'pending' WHERE id = ?",
+    [logoUri, facilityId]
+  );
   logAudit(admin, 'FACILITY_UPDATED', `Logo updated for facility ${facilityId}`);
 }

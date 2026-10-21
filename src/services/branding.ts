@@ -4,20 +4,32 @@
  */
 import { User } from '@/types';
 import { logAudit } from './audit';
-import { getSetting, setSetting } from './database';
+import { db } from './database';
 
 const LOGO_KEY = 'branding.logoUri';
 const NAME_KEY = 'branding.appName';
 
 export function getBrandLogoUri(): string | null {
-  return getSetting(LOGO_KEY) || null;
+  const row = db.getFirstSync<{ value: string }>(
+    'SELECT value FROM branding_settings WHERE id = ?',
+    [LOGO_KEY]
+  );
+  return row?.value || null;
 }
 
 export function setBrandLogoUri(admin: User, uri: string | null): void {
-  setSetting(LOGO_KEY, uri ?? '');
+  db.runSync(
+    `INSERT INTO branding_settings (id, value, sync_status) VALUES (?, ?, 'pending')
+     ON CONFLICT(id) DO UPDATE SET value = excluded.value, sync_status = 'pending'`,
+    [LOGO_KEY, uri ?? '']
+  );
   logAudit(admin, 'BRANDING_UPDATED', uri ? 'Application logo uploaded' : 'Application logo removed');
 }
 
 export function getBrandName(): string {
-  return getSetting(NAME_KEY) || 'MamaVR AI';
+  const row = db.getFirstSync<{ value: string }>(
+    'SELECT value FROM branding_settings WHERE id = ?',
+    [NAME_KEY]
+  );
+  return row?.value || 'MamaVR AI';
 }

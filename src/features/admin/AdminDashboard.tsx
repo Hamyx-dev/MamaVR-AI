@@ -1,6 +1,7 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Screen, ScreenTitle, StatCard } from '@/components/ui';
@@ -8,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { countHighRiskPatients } from '@/services/assessments';
 import { db } from '@/services/database';
 import { countPatients } from '@/services/patients';
-import { getSyncStatus } from '@/services/sync';
+import { getSyncStatus, syncNow } from '@/services/sync';
 import { countVisitsToday } from '@/services/visits';
 import { countVrSessions } from '@/services/vr';
 import { useTheme } from '@/theme/ThemeContext';
@@ -19,7 +20,7 @@ type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 export function AdminDashboard() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigation = useNavigation<Nav>();
   const [stats, setStats] = useState({
     facilities: 0,
@@ -30,6 +31,7 @@ export function AdminDashboard() {
     vrSessions: 0,
     pendingSync: 0,
   });
+  const [syncing, setSyncing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -48,6 +50,22 @@ export function AdminDashboard() {
       });
     }, [])
   );
+
+  const handleSync = async () => {
+    if (!user) return;
+    setSyncing(true);
+    const result = await syncNow(user);
+    setSyncing(false);
+    if (result.ok) refreshUser();
+    if (result.ok) {
+      Alert.alert(
+        'Synchronization Complete',
+        `${result.recordsSynced} records and ${result.mediaSynced} media files synchronized.`
+      );
+    } else {
+      Alert.alert('Synchronization Failed', result.error);
+    }
+  };
 
   return (
     <Screen>
@@ -71,9 +89,16 @@ export function AdminDashboard() {
           System Health
         </Text>
         <Text style={{ fontSize: typography.caption, color: theme.colors.textSecondary, marginTop: 4 }}>
-          Local database operational · {stats.pendingSync} record{stats.pendingSync === 1 ? '' : 's'} pending
-          synchronization
+          SQLite is available offline · {stats.pendingSync} item{stats.pendingSync === 1 ? '' : 's'} pending
+          · {getSyncStatus().cloudConfigured ? 'Supabase configured' : 'Supabase not configured'}
         </Text>
+        <Button
+          title={stats.pendingSync > 0 ? 'Sync Now' : 'Check for Cloud Updates'}
+          icon="cloud-upload-outline"
+          onPress={handleSync}
+          loading={syncing}
+          style={{ marginTop: spacing.sm }}
+        />
       </Card>
 
       <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>Administration</Text>

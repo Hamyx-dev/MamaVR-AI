@@ -35,6 +35,7 @@ export function VrLibraryScreen() {
           icon="glasses-outline"
           title="No Modules Available"
           message="Ask your administrator to publish VR education content."
+          illustration="education"
         />
       ) : (
         modules.map((module) => (

@@ -3,6 +3,7 @@ import { VrLanguage } from '@/types';
 export type AuthStackParamList = {
   Login: undefined;
   ForgotPassword: undefined;
+  PasswordRecovery: undefined;
 };
 
 export type MainStackParamList = {

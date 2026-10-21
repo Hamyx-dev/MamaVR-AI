@@ -19,7 +19,8 @@ export function initDatabase(): void {
       district TEXT NOT NULL DEFAULT '',
       region TEXT NOT NULL DEFAULT '',
       logo_uri TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -108,7 +109,8 @@ export function initDatabase(): void {
       visit_id TEXT,
       due_date TEXT NOT NULL,
       reason TEXT NOT NULL DEFAULT 'Routine ANC',
-      status TEXT NOT NULL DEFAULT 'scheduled'
+      status TEXT NOT NULL DEFAULT 'scheduled',
+      sync_status TEXT NOT NULL DEFAULT 'pending'
     );
 
     CREATE TABLE IF NOT EXISTS vr_modules (
@@ -121,7 +123,8 @@ export function initDatabase(): void {
       thumbnail_uri TEXT,
       languages TEXT NOT NULL DEFAULT '["en"]',
       is_builtin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
     );
 
     CREATE TABLE IF NOT EXISTS vr_sessions (
@@ -146,7 +149,9 @@ export function initDatabase(): void {
       owner_id TEXT,
       size_bytes INTEGER,
       uploaded INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      remote_path TEXT,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
     );
 
     CREATE TABLE IF NOT EXISTS audit_logs (
@@ -157,7 +162,8 @@ export function initDatabase(): void {
       action TEXT NOT NULL,
       detail TEXT NOT NULL DEFAULT '',
       device_id TEXT NOT NULL DEFAULT '',
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
     );
 
     CREATE TABLE IF NOT EXISTS team_members (
@@ -168,7 +174,8 @@ export function initDatabase(): void {
       responsibilities TEXT NOT NULL DEFAULT '[]',
       photo_uri TEXT,
       is_lead INTEGER NOT NULL DEFAULT 0,
-      display_order INTEGER NOT NULL DEFAULT 0
+      display_order INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
     );
 
     CREATE TABLE IF NOT EXISTS app_settings (
@@ -176,11 +183,37 @@ export function initDatabase(): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS branding_settings (
+      id TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
+    );
+
     CREATE INDEX IF NOT EXISTS idx_patients_name ON patients(full_name);
     CREATE INDEX IF NOT EXISTS idx_visits_patient ON anc_visits(patient_id);
     CREATE INDEX IF NOT EXISTS idx_assessments_patient ON assessments(patient_id);
     CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
   `);
+
+  ensureColumn('facilities', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn('follow_ups', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn('vr_modules', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn('media_assets', 'remote_path', 'TEXT');
+  ensureColumn('media_assets', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn('audit_logs', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn('team_members', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+  db.runSync(
+    `INSERT OR IGNORE INTO branding_settings (id, value, sync_status)
+     SELECT key, value, 'pending' FROM app_settings WHERE key LIKE 'branding.%'`
+  );
+  db.runSync("UPDATE users SET password_hash = '', salt = '' WHERE password_hash != '' OR salt != ''");
+}
+
+function ensureColumn(table: string, column: string, definition: string): void {
+  const columns = db.getAllSync<{ name: string }>(`PRAGMA table_info(${table})`);
+  if (!columns.some((item) => item.name === column)) {
+    db.execSync(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }
 
 export function getSetting(key: string): string | null {

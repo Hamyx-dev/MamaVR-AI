@@ -24,7 +24,7 @@ export function LoginScreen() {
   const handleLogin = async () => {
     setError(null);
     if (!identifier.trim()) {
-      setError('Please enter your username or email.');
+      setError('Please enter your email address.');
       return;
     }
     if (!password) {
@@ -55,10 +55,11 @@ export function LoginScreen() {
 
       <Card>
         <Field
-          label="Username or Email"
+          label="Email"
           value={identifier}
           onChangeText={setIdentifier}
-          placeholder="e.g. midwife"
+          placeholder="you@facility.org"
+          keyboardType="email-address"
           autoCapitalize="none"
         />
         <Field
@@ -84,7 +85,7 @@ export function LoginScreen() {
 
       <Card style={{ marginTop: spacing.md }}>
         <Text style={{ color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-          Demo accounts — Healthcare Worker: midwife / Midwife@2026 · Administrator: admin / Admin@2026
+          Sign in with the email and password provided by your administrator.
         </Text>
       </Card>
     </Screen>

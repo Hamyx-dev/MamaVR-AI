@@ -52,13 +52,19 @@ export function getVrModule(id: string): VrModule | null {
 
 /** Admin: attach or replace the uploaded lesson video for a module. */
 export function setModuleVideo(admin: User, moduleId: string, videoUri: string | null): void {
-  db.runSync('UPDATE vr_modules SET video_uri = ? WHERE id = ?', [videoUri, moduleId]);
+  db.runSync(
+    "UPDATE vr_modules SET video_uri = ?, sync_status = 'pending' WHERE id = ?",
+    [videoUri, moduleId]
+  );
   logAudit(admin, 'VR_CONTENT_UPDATED', `Video ${videoUri ? 'uploaded' : 'removed'} for module ${moduleId}`);
 }
 
 /** Admin: attach or replace the uploaded thumbnail image for a module. */
 export function setModuleThumbnail(admin: User, moduleId: string, thumbnailUri: string | null): void {
-  db.runSync('UPDATE vr_modules SET thumbnail_uri = ? WHERE id = ?', [thumbnailUri, moduleId]);
+  db.runSync(
+    "UPDATE vr_modules SET thumbnail_uri = ?, sync_status = 'pending' WHERE id = ?",
+    [thumbnailUri, moduleId]
+  );
   logAudit(admin, 'VR_CONTENT_UPDATED', `Thumbnail updated for module ${moduleId}`);
 }
 
