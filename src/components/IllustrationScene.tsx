@@ -15,7 +15,7 @@ const SCENES: Record<
   }
 > = {
   care: { icon: 'woman', accent: 'primary', badge: 'heart' },
-  education: { icon: 'play', accent: 'primary', badge: 'glasses' },
+  education: { icon: 'play', accent: 'primary', badge: 'videocam' },
   followUp: { icon: 'calendar', accent: 'warning', badge: 'checkmark' },
   allClear: { icon: 'shield-checkmark', accent: 'success', badge: 'checkmark' },
 };

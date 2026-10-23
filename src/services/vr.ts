@@ -9,7 +9,7 @@
  */
 import * as Crypto from 'expo-crypto';
 
-import { SyncStatus, User, VrLanguage, VrModule, VrSession } from '@/types';
+import { SyncStatus, User, VrLanguage, VrLessonMedia, VrModule, VrSession } from '@/types';
 import { logAudit } from './audit';
 import { db, nowIso } from './database';
 
@@ -48,6 +48,81 @@ export function listVrModules(): VrModule[] {
 export function getVrModule(id: string): VrModule | null {
   const row = db.getFirstSync<ModuleRow>('SELECT * FROM vr_modules WHERE id = ?', [id]);
   return row ? mapModule(row) : null;
+}
+
+interface LessonMediaRow {
+  id: string;
+  module_id: string;
+  language: VrLanguage;
+  video_uri: string | null;
+  created_at: string;
+  sync_status: SyncStatus;
+}
+
+function mapLessonMedia(row: LessonMediaRow): VrLessonMedia {
+  return {
+    id: row.id,
+    moduleId: row.module_id,
+    language: row.language,
+    videoUri: row.video_uri,
+    createdAt: row.created_at,
+    syncStatus: row.sync_status,
+  };
+}
+
+export function listLessonMedia(moduleId: string): VrLessonMedia[] {
+  return db
+    .getAllSync<LessonMediaRow>(
+      'SELECT * FROM vr_lesson_media WHERE module_id = ? ORDER BY language',
+      [moduleId]
+    )
+    .map(mapLessonMedia);
+}
+
+export function getLessonVideoUri(moduleId: string, language: VrLanguage): string | null {
+  const media = db.getFirstSync<{ video_uri: string | null }>(
+    'SELECT video_uri FROM vr_lesson_media WHERE module_id = ? AND language = ?',
+    [moduleId, language]
+  );
+  const uri = media?.video_uri ?? (language === 'en' ? getVrModule(moduleId)?.videoUri ?? null : null);
+  if (!uri) return null;
+  return uri.startsWith('file://') || uri.startsWith('https://') ? uri : null;
+}
+
+export function listAvailableLessonLanguages(moduleId: string): VrLanguage[] {
+  const languages = db.getAllSync<{ language: VrLanguage }>(
+    'SELECT language FROM vr_lesson_media WHERE module_id = ? ORDER BY language',
+    [moduleId]
+  ).map((row) => row.language);
+  if (getVrModule(moduleId)?.videoUri && !languages.includes('en')) languages.push('en');
+  return languages.filter((language) => getLessonVideoUri(moduleId, language) !== null);
+}
+
+export function setLessonVideo(
+  admin: User,
+  moduleId: string,
+  language: VrLanguage,
+  videoUri: string | null
+): void {
+  const id = `${moduleId}:${language}`;
+  db.runSync(
+    `INSERT INTO vr_lesson_media (id, module_id, language, video_uri, created_at, sync_status)
+     VALUES (?, ?, ?, ?, ?, 'pending')
+     ON CONFLICT(module_id, language) DO UPDATE SET
+       video_uri = excluded.video_uri, created_at = excluded.created_at, sync_status = 'pending'`,
+    [id, moduleId, language, videoUri, nowIso()]
+  );
+  if (language === 'en') {
+    db.runSync(
+      "UPDATE vr_modules SET video_uri = ?, sync_status = 'pending' WHERE id = ?",
+      [videoUri, moduleId]
+    );
+  }
+  logAudit(
+    admin,
+    'VR_CONTENT_UPDATED',
+    `${language} lesson video ${videoUri ? 'uploaded' : 'removed'} for module ${moduleId}`
+  );
 }
 
 /** Admin: attach or replace the uploaded lesson video for a module. */
@@ -106,6 +181,13 @@ export function createVrModule(admin: User, input: NewModuleInput): VrModule {
       module.createdAt,
     ]
   );
+  if (input.videoUri) {
+    db.runSync(
+      `INSERT INTO vr_lesson_media (id, module_id, language, video_uri, created_at, sync_status)
+       VALUES (?, ?, 'en', ?, ?, 'pending')`,
+      [`${module.id}:en`, module.id, input.videoUri, module.createdAt]
+    );
+  }
   logAudit(admin, 'VR_CONTENT_CREATED', `New VR module: ${module.title}`);
   return module;
 }

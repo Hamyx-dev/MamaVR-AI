@@ -13,7 +13,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, type Edges } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme/ThemeContext';
 import { radius, spacing, typography } from '@/theme/theme';
@@ -24,10 +24,12 @@ export function Screen({
   children,
   scroll = true,
   style,
+  safeAreaEdges = ['bottom'],
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   style?: StyleProp<ViewStyle>;
+  safeAreaEdges?: Edges;
 }) {
   const { theme } = useTheme();
   const content = scroll ? (
@@ -41,7 +43,7 @@ export function Screen({
     <View style={[styles.screenContent, { flex: 1 }, style]}>{children}</View>
   );
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={safeAreaEdges}>
       {content}
     </SafeAreaView>
   );
@@ -441,6 +443,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: 140,
+    minHeight: 132,
     alignItems: 'flex-start',
   },
   emptyState: {

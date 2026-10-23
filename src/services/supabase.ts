@@ -62,15 +62,34 @@ async function request<T>(
   if (!response.ok) {
     let message = `Supabase request failed (HTTP ${response.status}).`;
     try {
-      const detail = (await response.json()) as { message?: string; msg?: string; error_description?: string };
-      message = detail.message ?? detail.msg ?? detail.error_description ?? message;
+      const detail = (await response.json()) as {
+        message?: unknown;
+        msg?: unknown;
+        error_description?: unknown;
+        error?: unknown;
+        details?: unknown;
+        hint?: unknown;
+      };
+      const parts = [detail.message, detail.msg, detail.error_description, detail.error, detail.details, detail.hint]
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter(Boolean);
+      if (parts.length) message = [...new Set(parts)].join(' — ');
     } catch {
       // Use the HTTP status when the response body is not JSON.
     }
     throw new SupabaseRequestError(message, response.status);
   }
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const text = await response.text();
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new SupabaseRequestError(
+      `Supabase returned an invalid response (HTTP ${response.status}).`,
+      response.status
+    );
+  }
 }
 
 function withExpiry(session: AuthResponse): SupabaseSession {

@@ -3,11 +3,17 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SplashScreen } from '@/features/authentication/SplashScreen';
+import { useAutoSyncOnReconnect } from '@/hooks/useAutoSyncOnReconnect';
 import { AuthProvider } from '@/hooks/useAuth';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { initDatabase } from '@/services/database';
 import { seedIfNeeded } from '@/services/seed';
 import { ThemeProvider } from '@/theme/ThemeContext';
+
+function SyncLifecycle() {
+  useAutoSyncOnReconnect();
+  return null;
+}
 
 // Create the schema synchronously at module load, before anything renders,
 // so no screen can ever query a table that does not exist yet.
@@ -31,6 +37,7 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
+          <SyncLifecycle />
           <StatusBar style="auto" />
           <RootNavigator />
         </AuthProvider>

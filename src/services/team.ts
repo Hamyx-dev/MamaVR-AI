@@ -4,6 +4,8 @@
  * member's professional passport photograph through the Media Manager,
  * replacing the "[Insert Photo Here]" placeholders from the document.
  */
+import * as Crypto from 'expo-crypto';
+
 import { TeamMember, User } from '@/types';
 import { logAudit } from './audit';
 import { db } from './database';
@@ -25,6 +27,7 @@ const TEAM: TeamMember[] = [
     photoUri: null,
     isLead: true,
     displayOrder: 1,
+    isActive: true,
   },
   {
     id: 'team-osman-abdul-wahab',
@@ -43,6 +46,7 @@ const TEAM: TeamMember[] = [
     photoUri: null,
     isLead: false,
     displayOrder: 2,
+    isActive: true,
   },
   {
     id: 'team-adams-rashida',
@@ -60,6 +64,7 @@ const TEAM: TeamMember[] = [
     photoUri: null,
     isLead: false,
     displayOrder: 3,
+    isActive: true,
   },
 ];
 
@@ -91,6 +96,7 @@ interface TeamRow {
   photo_uri: string | null;
   is_lead: number;
   display_order: number;
+  is_active: number;
 }
 
 function mapMember(row: TeamRow): TeamMember {
@@ -103,13 +109,76 @@ function mapMember(row: TeamRow): TeamMember {
     photoUri: row.photo_uri,
     isLead: row.is_lead === 1,
     displayOrder: row.display_order,
+    isActive: row.is_active !== 0,
   };
 }
 
 export function listTeamMembers(): TeamMember[] {
   return db
-    .getAllSync<TeamRow>('SELECT * FROM team_members ORDER BY display_order')
+    .getAllSync<TeamRow>('SELECT * FROM team_members WHERE is_active = 1 ORDER BY display_order')
     .map(mapMember);
+}
+
+export interface NewTeamMemberInput {
+  name: string;
+  role: string;
+  qualification: string;
+  responsibilities: string[];
+}
+
+export function createTeamMember(admin: User, input: NewTeamMemberInput): TeamMember {
+  if (admin.role !== 'admin') throw new Error('Only administrators can add team members.');
+  const name = input.name.trim();
+  const role = input.role.trim();
+  if (!name) throw new Error('Enter the team member name.');
+  if (!role) throw new Error('Enter the team member role.');
+  const responsibilities = input.responsibilities
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  const highest = db.getFirstSync<{ value: number | null }>(
+    'SELECT MAX(display_order) AS value FROM team_members'
+  );
+  const member: TeamMember = {
+    id: Crypto.randomUUID(),
+    name,
+    role,
+    qualification: input.qualification.trim(),
+    responsibilities,
+    photoUri: null,
+    isLead: false,
+    displayOrder: (highest?.value ?? 0) + 1,
+    isActive: true,
+  };
+  db.runSync(
+    `INSERT INTO team_members (
+       id, name, role, qualification, responsibilities, photo_uri,
+       is_lead, display_order, is_active, sync_status
+     ) VALUES (?, ?, ?, ?, ?, NULL, 0, ?, 1, 'pending')`,
+    [
+      member.id,
+      member.name,
+      member.role,
+      member.qualification,
+      JSON.stringify(member.responsibilities),
+      member.displayOrder,
+    ]
+  );
+  logAudit(admin, 'TEAM_MEMBER_ADDED', `Added team member: ${member.name} (${member.role})`);
+  return member;
+}
+
+export function removeTeamMember(admin: User, memberId: string): void {
+  if (admin.role !== 'admin') throw new Error('Only administrators can remove team members.');
+  const member = db.getFirstSync<{ name: string }>(
+    'SELECT name FROM team_members WHERE id = ? AND is_active = 1',
+    [memberId]
+  );
+  if (!member) throw new Error('This team member is no longer available.');
+  db.runSync(
+    "UPDATE team_members SET is_active = 0, sync_status = 'pending' WHERE id = ?",
+    [memberId]
+  );
+  logAudit(admin, 'TEAM_MEMBER_REMOVED', `Removed team member: ${member.name}`);
 }
 
 /** Admin: attach or replace a member's professional passport photograph. */

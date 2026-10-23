@@ -38,7 +38,12 @@ import { PatientDetailScreen } from '@/features/patients/PatientDetailScreen';
 import { PatientRegistrationScreen } from '@/features/patients/PatientRegistrationScreen';
 import { ReferralScreen } from '@/features/referrals/ReferralScreen';
 import { TeamScreen } from '@/features/team/TeamScreen';
+import { TeamMemberFormScreen } from '@/features/team/TeamMemberFormScreen';
 import { VrPlayerScreen } from '@/features/vr/VrPlayerScreen';
+import { EducationHomeScreen } from '@/features/education/EducationHomeScreen';
+import { EducationLibraryScreen } from '@/features/education/EducationLibraryScreen';
+import { EducationSessionFormScreen } from '@/features/education/EducationSessionFormScreen';
+import { EducationSessionDetailScreen } from '@/features/education/EducationSessionDetailScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
@@ -58,7 +63,7 @@ function HealthcareTabNavigator() {
           const icons: Record<keyof HealthcareTabParamList, keyof typeof Ionicons.glyphMap> = {
             Home: 'home',
             Patients: 'people',
-            VRLibrary: 'glasses',
+            VRLibrary: 'videocam',
             Notifications: 'notifications',
             Profile: 'person-circle',
           };
@@ -68,7 +73,7 @@ function HealthcareTabNavigator() {
     >
       <HealthcareTabs.Screen name="Home" component={HealthcareDashboard} />
       <HealthcareTabs.Screen name="Patients" component={PatientSearchScreen} />
-      <HealthcareTabs.Screen name="VRLibrary" component={VrLibraryScreen} options={{ title: 'VR Education' }} />
+      <HealthcareTabs.Screen name="VRLibrary" component={VrLibraryScreen} options={{ title: 'Videos' }} />
       <HealthcareTabs.Screen name="Notifications" component={NotificationsScreen} />
       <HealthcareTabs.Screen name="Profile" component={ProfileScreen} />
     </HealthcareTabs.Navigator>
@@ -99,7 +104,7 @@ function AdminTabNavigator() {
       <AdminTabs.Screen name="Dashboard" component={AdminDashboard} />
       <AdminTabs.Screen name="Users" component={UserManagementScreen} />
       <AdminTabs.Screen name="Facilities" component={FacilityManagementScreen} />
-      <AdminTabs.Screen name="Content" component={VrContentScreen} options={{ title: 'VR Content' }} />
+      <AdminTabs.Screen name="Content" component={VrContentScreen} options={{ title: 'Videos' }} />
       <AdminTabs.Screen name="Profile" component={ProfileScreen} />
     </AdminTabs.Navigator>
   );
@@ -146,6 +151,10 @@ export function RootNavigator() {
           <MainStack.Screen name="Consultation" component={ConsultationScreen} options={{ title: 'ANC Consultation' }} />
           <MainStack.Screen name="Assessment" component={AssessmentScreen} options={{ title: 'AI Assessment' }} />
           <MainStack.Screen name="VrPlayer" component={VrPlayerScreen} options={{ headerShown: false }} />
+          <MainStack.Screen name="EducationHome" component={EducationHomeScreen} options={{ title: 'Maternal Education' }} />
+          <MainStack.Screen name="EducationLibrary" component={EducationLibraryScreen} options={{ title: 'Video Library' }} />
+          <MainStack.Screen name="EducationCreate" component={EducationSessionFormScreen} options={{ title: 'Create Session' }} />
+          <MainStack.Screen name="EducationSessionDetail" component={EducationSessionDetailScreen} options={{ title: 'Session Details' }} />
           <MainStack.Screen name="Referral" component={ReferralScreen} options={{ title: 'Referral' }} />
           <MainStack.Screen name="ConsultationSummary" component={ConsultationSummaryScreen} options={{ title: 'Summary' }} />
           <MainStack.Screen name="HighRiskList" component={HighRiskListScreen} options={{ title: 'High-Risk Patients' }} />
@@ -156,6 +165,7 @@ export function RootNavigator() {
           <MainStack.Screen name="AuditLogs" component={AuditLogsScreen} options={{ title: 'Audit Logs' }} />
           <MainStack.Screen name="Branding" component={BrandingScreen} options={{ title: 'Branding' }} />
           <MainStack.Screen name="Team" component={TeamScreen} options={{ title: 'Project Team' }} />
+          <MainStack.Screen name="TeamMemberForm" component={TeamMemberFormScreen} options={{ title: 'Add Team Member' }} />
         </MainStack.Navigator>
       )}
     </NavigationContainer>

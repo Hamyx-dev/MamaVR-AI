@@ -13,6 +13,16 @@ export type MainStackParamList = {
   Consultation: { patientId: string; visitId?: string };
   Assessment: { assessmentId: string };
   VrPlayer: { moduleId: string; language: VrLanguage; patientId?: string; visitId?: string };
+  EducationHome: undefined;
+  EducationLibrary: undefined;
+  EducationCreate: {
+    followUpToId?: string;
+    patientIds?: string[];
+    moduleId?: string;
+    language?: VrLanguage;
+    title?: string;
+  };
+  EducationSessionDetail: { sessionId: string };
   Referral: { patientId: string; visitId?: string; assessmentId?: string; suggestedReason?: string };
   ConsultationSummary: { visitId: string; assessmentId?: string };
   HighRiskList: undefined;
@@ -23,6 +33,7 @@ export type MainStackParamList = {
   AuditLogs: undefined;
   Branding: undefined;
   Team: undefined;
+  TeamMemberForm: undefined;
 };
 
 export type HealthcareTabParamList = {

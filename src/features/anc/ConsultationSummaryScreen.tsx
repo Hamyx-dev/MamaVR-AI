@@ -111,7 +111,7 @@ export function ConsultationSummaryScreen() {
 
       <SectionHeading>Education & Follow-up</SectionHeading>
       <Card>
-        <KeyValueRow label="VR Education Completed" value={vrCompleted ? 'Yes' : 'No'} />
+        <KeyValueRow label="Education Video Completed" value={vrCompleted ? 'Yes' : 'No'} />
         <KeyValueRow label="Next Review (WHO schedule)" value={formatDisplayDate(reviewDate)} />
         <KeyValueRow label="Reason" value="Routine ANC" />
       </Card>

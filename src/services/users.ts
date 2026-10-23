@@ -96,6 +96,21 @@ async function callAdminUsers<T>(body: Record<string, unknown>): Promise<T> {
   });
 }
 
+function describeCreateUserError(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Unable to create the account.';
+  const lower = message.toLowerCase();
+  if (lower.includes('already been registered') || lower.includes('already exists')) {
+    return `${message} Use a different email address or reset the existing account's password.`;
+  }
+  if (lower.includes('username') && (lower.includes('duplicate') || lower.includes('unique'))) {
+    return 'That username is already taken. Choose a different username.';
+  }
+  if (lower.includes('facility_id') && (lower.includes('foreign key') || lower.includes('violates'))) {
+    return 'The selected facility has not been synced to the cloud yet. Run "Sync Now" on the admin dashboard, then create the account again.';
+  }
+  return message;
+}
+
 export async function createUser(admin: User, input: CreateUserInput): Promise<string | null> {
   const policyError = validatePasswordPolicy(input.password);
   if (policyError) return policyError;
@@ -117,7 +132,7 @@ export async function createUser(admin: User, input: CreateUserInput): Promise<s
     logAudit(admin, 'USER_CREATED', `Created ${input.role} account: ${input.username}`);
     return null;
   } catch (error) {
-    return error instanceof Error ? error.message : 'Unable to create the account.';
+    return describeCreateUserError(error);
   }
 }
 

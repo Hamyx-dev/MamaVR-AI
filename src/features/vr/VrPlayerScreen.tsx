@@ -1,9 +1,7 @@
 /**
- * VR Player (§4.9 / §8.13): plays the module's uploaded lesson video in an
- * immersive full-screen experience suitable for smartphone VR headsets.
- * When no video has been uploaded yet, the player falls back to a guided
- * narration mode that steps through the module's key learning messages, so
- * education can still be delivered before content production is complete.
+ * Education video player: plays the uploaded lesson video full-screen.
+ * The selected language is fixed for the player session. Missing translations
+ * are shown as unavailable rather than substituting another language.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -13,37 +11,36 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/hooks/useAuth';
-import { getVrModule, startVrSession, updateVrSession } from '@/services/vr';
+import { getLessonVideoUri, getVrModule, startVrSession, updateVrSession } from '@/services/vr';
 import { spacing, typography } from '@/theme/theme';
-import { VR_LANGUAGE_LABELS, VrLanguage } from '@/types';
+import { VR_LANGUAGE_LABELS } from '@/types';
 import { MainStackParamList } from '@/navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 type Route = RouteProp<MainStackParamList, 'VrPlayer'>;
 
-const NARRATION_STEP_MS = 8000;
-
 export function VrPlayerScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { user } = useAuth();
   const module = getVrModule(route.params.moduleId);
+  const language = route.params.language;
+  const videoUri = module ? getLessonVideoUri(module.id, language) : null;
 
-  const [language, setLanguage] = useState<VrLanguage>(route.params.language);
-  const [subtitles, setSubtitles] = useState(true);
   const [playing, setPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
-  const [narrationIndex, setNarrationIndex] = useState(0);
+  const [playerStatus, setPlayerStatus] = useState<'idle' | 'loading' | 'readyToPlay' | 'error'>('loading');
+  const [playerError, setPlayerError] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const player = useVideoPlayer(module?.videoUri ?? null, (p) => {
+  const player = useVideoPlayer(videoUri, (p) => {
     p.timeUpdateEventInterval = 1;
-    p.play();
+    if (videoUri) p.play();
   });
 
   useEffect(() => {
-    if (user && module) {
+    if (user && module && videoUri) {
       const session = startVrSession(
         user,
         module.id,
@@ -53,13 +50,21 @@ export function VrPlayerScreen() {
       );
       sessionIdRef.current = session.id;
     }
-    // Session is created once on entry; language changes are tracked in-session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Video mode: track playback progress and completion.
   useEffect(() => {
-    if (!module?.videoUri) return;
+    if (!videoUri) return;
+    setPlayerStatus(player.status);
+    const statusSub = player.addListener('statusChange', (event) => {
+      setPlayerStatus(event.status);
+      if (event.status === 'error') {
+        setPlayerError(event.error?.message ?? 'The selected lesson video could not be loaded.');
+        setPlaying(false);
+      } else if (event.status === 'readyToPlay') {
+        setPlayerError(null);
+      }
+    });
     const timeSub = player.addListener('timeUpdate', ({ currentTime }) => {
       const duration = player.duration;
       if (!duration || duration <= 0) return;
@@ -73,35 +78,33 @@ export function VrPlayerScreen() {
       if (sessionIdRef.current) updateVrSession(sessionIdRef.current, 100, true);
     });
     return () => {
+      statusSub.remove();
       timeSub.remove();
       endSub.remove();
     };
-  }, [player, module?.videoUri]);
-
-  // Guided narration mode: advance through key messages on a timer.
-  useEffect(() => {
-    if (!module || module.videoUri || !playing) return;
-    const total = module.keyMessages.length;
-    const timer = setInterval(() => {
-      setNarrationIndex((index) => {
-        const next = index + 1;
-        const pct = Math.min(Math.round((next / total) * 100), 100);
-        setProgress(pct);
-        if (sessionIdRef.current) updateVrSession(sessionIdRef.current, pct, pct >= 100);
-        if (next >= total) {
-          setPlaying(false);
-          return index;
-        }
-        return next;
-      });
-    }, NARRATION_STEP_MS);
-    return () => clearInterval(timer);
-  }, [module, playing]);
+  }, [player, videoUri]);
 
   if (!module) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.subtitleText}>Module not found.</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!videoUri) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.unavailable}>
+          <Text style={styles.title}>{module.title}</Text>
+          <Text style={styles.subtitleText}>
+            The {VR_LANGUAGE_LABELS[language]} version is not available. Choose another available language from the library.
+          </Text>
+          <Pressable onPress={() => navigation.goBack()} style={styles.controlButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Text style={styles.controlLabel}>Back to library</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }
@@ -114,41 +117,31 @@ export function VrPlayerScreen() {
   };
 
   const replay = () => {
-    setNarrationIndex(0);
     setProgress(0);
+    setPlayerError(null);
     setPlaying(true);
-    if (module.videoUri) {
-      player.currentTime = 0;
-      player.play();
-    }
+    player.currentTime = 0;
+    player.play();
   };
 
   const togglePlay = () => {
     const next = !playing;
     setPlaying(next);
-    if (module.videoUri) {
-      if (next) player.play();
-      else player.pause();
-    }
-  };
-
-  const cycleLanguage = () => {
-    const languages = module.languages.length > 0 ? module.languages : (['en'] as VrLanguage[]);
-    const currentIndex = languages.indexOf(language);
-    setLanguage(languages[(currentIndex + 1) % languages.length]);
+    if (next) player.play();
+    else player.pause();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top bar: title, language, exit (§8.13) */}
+      {/* Top bar: title, language, exit */}
       <View style={styles.topBar}>
         <Text style={styles.title} numberOfLines={1}>
           {module.title}
         </Text>
-        <Pressable onPress={cycleLanguage} style={styles.topAction}>
+        <View style={styles.topAction}>
           <Ionicons name="language" size={20} color="#fff" />
           <Text style={styles.topActionText}>{VR_LANGUAGE_LABELS[language]}</Text>
-        </Pressable>
+        </View>
         <Pressable onPress={exit} style={styles.topAction}>
           <Ionicons name="close" size={24} color="#fff" />
         </Pressable>
@@ -156,31 +149,23 @@ export function VrPlayerScreen() {
 
       {/* Immersive scene */}
       <View style={styles.scene}>
-        {module.videoUri ? (
+        {playerStatus === 'error' ? (
+          <View style={styles.unavailable}>
+            <Ionicons name="alert-circle-outline" size={40} color="#EF5350" />
+            <Text style={styles.subtitleText}>{playerError ?? 'The lesson video could not be loaded.'}</Text>
+          </View>
+        ) : playerStatus === 'loading' || playerStatus === 'idle' ? (
+          <View style={styles.unavailable}>
+            <Text style={styles.subtitleText}>Loading {VR_LANGUAGE_LABELS[language]} lesson…</Text>
+          </View>
+        ) : (
           <VideoView
             player={player}
             style={StyleSheet.absoluteFill}
             contentFit="contain"
             nativeControls={false}
           />
-        ) : (
-          <View style={styles.narration}>
-            <Ionicons name="glasses-outline" size={64} color="#5B9BE6" />
-            <Text style={styles.narrationStep}>
-              Lesson {Math.min(narrationIndex + 1, module.keyMessages.length)} of {module.keyMessages.length}
-            </Text>
-            <Text style={styles.narrationText}>{module.keyMessages[narrationIndex]}</Text>
-            <Text style={styles.narrationHint}>
-              Guided narration mode — your administrator can upload the full VR video for this lesson.
-            </Text>
-          </View>
         )}
-
-        {subtitles && module.videoUri ? (
-          <View style={styles.subtitleBox}>
-            <Text style={styles.subtitleText}>{module.keyMessages[0]}</Text>
-          </View>
-        ) : null}
       </View>
 
       {/* Progress indicator */}
@@ -191,17 +176,13 @@ export function VrPlayerScreen() {
 
       {/* Bottom controls: play/pause, replay, subtitles (§8.13) */}
       <View style={styles.controls}>
-        <Pressable onPress={togglePlay} style={styles.controlButton}>
+        <Pressable onPress={togglePlay} disabled={playerStatus !== 'readyToPlay'} style={styles.controlButton}>
           <Ionicons name={playing ? 'pause' : 'play'} size={28} color="#fff" />
           <Text style={styles.controlLabel}>{playing ? 'Pause' : 'Play'}</Text>
         </Pressable>
         <Pressable onPress={replay} style={styles.controlButton}>
           <Ionicons name="refresh" size={28} color="#fff" />
           <Text style={styles.controlLabel}>Replay</Text>
-        </Pressable>
-        <Pressable onPress={() => setSubtitles((s) => !s)} style={styles.controlButton}>
-          <Ionicons name={subtitles ? 'text' : 'text-outline'} size={28} color={subtitles ? '#5B9BE6' : '#fff'} />
-          <Text style={styles.controlLabel}>Subtitles</Text>
         </Pressable>
         <Pressable onPress={exit} style={styles.controlButton}>
           <Ionicons name="exit-outline" size={28} color="#fff" />
@@ -247,40 +228,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#111A24',
     justifyContent: 'center',
   },
-  narration: {
+  unavailable: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  narrationStep: {
-    color: '#5B9BE6',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: spacing.md,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  narrationText: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: spacing.md,
-    lineHeight: 32,
-  },
-  narrationHint: {
-    color: '#94A3B1',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: spacing.xl,
-  },
-  subtitleBox: {
-    position: 'absolute',
-    bottom: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 8,
-    padding: spacing.sm,
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
   },
   subtitleText: {
     color: '#fff',

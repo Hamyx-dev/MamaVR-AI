@@ -1,5 +1,5 @@
 /**
- * VR Content Manager: administrators upload and maintain the video and
+ * Education Video Manager: administrators upload and maintain the video and
  * thumbnail media for every VR education module (§7 / §9.9). Uploaded files
  * are stored in private app storage and queued for cloud replication by the
  * Sync Manager, so modules keep working fully offline (§7.10).
@@ -11,12 +11,12 @@ import React, { useCallback, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { MediaPicker } from '@/components/MediaPicker';
-import { Button, Card, Screen, ScreenTitle } from '@/components/ui';
+import { Button, Card, Screen, ScreenTitle, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { listVrModules, setModuleThumbnail, setModuleVideo } from '@/services/vr';
+import { getLessonVideoUri, listAvailableLessonLanguages, listVrModules, setLessonVideo, setModuleThumbnail } from '@/services/vr';
 import { useTheme } from '@/theme/ThemeContext';
 import { radius, spacing, typography } from '@/theme/theme';
-import { VrModule } from '@/types';
+import { VR_LANGUAGES, VR_LANGUAGE_LABELS, VrLanguage, VrModule } from '@/types';
 import { MainStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
@@ -27,6 +27,7 @@ export function VrContentScreen() {
   const navigation = useNavigation<Nav>();
   const [modules, setModules] = useState<VrModule[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingLanguage, setEditingLanguage] = useState<VrLanguage>('en');
 
   const refresh = useCallback(() => setModules(listVrModules()), []);
   useFocusEffect(refresh);
@@ -34,12 +35,13 @@ export function VrContentScreen() {
   return (
     <Screen>
       <ScreenTitle subtitle="Upload lesson videos and thumbnails for each education module. Content plays fully offline once uploaded.">
-        VR Content Manager
+        Maternal Education Videos
       </ScreenTitle>
       <Button title="Publish New Module" icon="add-circle-outline" onPress={() => navigation.navigate('VrModuleForm', {})} />
 
       {modules.map((module) => {
         const expanded = expandedId === module.id;
+        const availableLanguages = listAvailableLessonLanguages(module.id);
         return (
           <Card key={module.id}>
             <View style={styles.row}>
@@ -47,7 +49,7 @@ export function VrContentScreen() {
                 <Image source={{ uri: module.thumbnailUri }} style={styles.thumb} />
               ) : (
                 <View style={[styles.thumb, styles.thumbFallback, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
-                  <Ionicons name="glasses" size={22} color={theme.colors.primary} />
+                  <Ionicons name="videocam-outline" size={22} color={theme.colors.primary} />
                 </View>
               )}
               <View style={{ flex: 1, marginLeft: spacing.md }}>
@@ -56,12 +58,14 @@ export function VrContentScreen() {
                 </Text>
                 <View style={styles.statusRow}>
                   <Ionicons
-                    name={module.videoUri ? 'checkmark-circle' : 'alert-circle-outline'}
+                    name={availableLanguages.length ? 'checkmark-circle' : 'alert-circle-outline'}
                     size={14}
-                    color={module.videoUri ? theme.colors.success : theme.colors.warning}
+                    color={availableLanguages.length ? theme.colors.success : theme.colors.warning}
                   />
                   <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 4 }}>
-                    {module.videoUri ? 'Video uploaded' : 'No video — plays as guided narration'}
+                    {availableLanguages.length
+                      ? `Video available: ${availableLanguages.map((language) => VR_LANGUAGE_LABELS[language]).join(', ')}`
+                      : 'No language versions uploaded'}
                     {module.isBuiltin ? ' · Built-in module' : ''}
                   </Text>
                 </View>
@@ -70,17 +74,26 @@ export function VrContentScreen() {
 
             {expanded ? (
               <View style={{ marginTop: spacing.md }}>
+                <SegmentedControl
+                  label="Lesson language version"
+                  value={editingLanguage}
+                  onChange={setEditingLanguage}
+                  options={VR_LANGUAGES.map((language) => ({
+                    value: language,
+                    label: VR_LANGUAGE_LABELS[language],
+                  }))}
+                />
                 <MediaPicker
-                  label="Lesson Video"
+                  label={`${VR_LANGUAGE_LABELS[editingLanguage]} Video`}
                   kind="video"
                   ownerType="vr_video"
                   ownerId={module.id}
-                  value={module.videoUri}
+                  value={getLessonVideoUri(module.id, editingLanguage)}
                   onChange={(uri) => {
-                    if (admin) setModuleVideo(admin, module.id, uri);
+                    if (admin) setLessonVideo(admin, module.id, editingLanguage, uri);
                     refresh();
                   }}
-                  helper="MP4 recommended, 3–7 minutes, optimized for mid-range Android devices."
+                  helper={`Only this ${VR_LANGUAGE_LABELS[editingLanguage]} version will play when that language is selected. MP4 recommended.`}
                 />
                 <MediaPicker
                   label="Thumbnail Image"
@@ -92,7 +105,7 @@ export function VrContentScreen() {
                     if (admin) setModuleThumbnail(admin, module.id, uri);
                     refresh();
                   }}
-                  helper="Shown in the VR education library."
+                  helper="Shown in the maternal education video library."
                 />
                 <Button title="Done" variant="secondary" onPress={() => setExpandedId(null)} />
               </View>

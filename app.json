@@ -2,20 +2,19 @@
   "expo": {
     "name": "MamaVR AI",
     "slug": "mamavr-ai",
+    "icon": "./assets/images/App Icon.png",
     "scheme": "mamavr",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#1565C0"
-    },
     "android": {
       "package": "org.mamavr.ai",
+      "versionCode": 4,
       "permissions": [
-        "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO"
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "ios": {
@@ -28,13 +27,32 @@
     "plugins": [
       "expo-sqlite",
       [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1565C0",
+          "android": {
+            "drawable": {
+              "icon": "./assets/splashscreen_logo.xml"
+            }
+          }
+        }
+      ],
+      "expo-font",
+      [
         "expo-image-picker",
         {
           "photosPermission": "MamaVR AI needs access to your media library so you can upload images, logos and videos.",
           "cameraPermission": "MamaVR AI uses the camera to capture patient photos."
         }
       ],
-      "expo-video"
-    ]
+      "expo-video",
+      "expo-asset"
+    ],
+    "owner": "hakimdeveloper",
+    "extra": {
+      "eas": {
+        "projectId": "4f8652bd-8ba7-4c4d-a072-4acfd2e94745"
+      }
+    }
   }
 }

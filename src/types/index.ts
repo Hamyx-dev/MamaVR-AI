@@ -191,12 +191,53 @@ export interface FollowUp {
   status: 'scheduled' | 'attended' | 'missed';
 }
 
-export type VrLanguage = 'en' | 'dag';
-
-export const VR_LANGUAGE_LABELS: Record<VrLanguage, string> = {
+export const VR_LANGUAGE_LABELS = {
   en: 'English',
   dag: 'Dagbani',
-};
+} as const;
+
+export type VrLanguage = keyof typeof VR_LANGUAGE_LABELS;
+export const VR_LANGUAGES = Object.keys(VR_LANGUAGE_LABELS) as VrLanguage[];
+
+export interface VrLessonMedia {
+  id: string;
+  moduleId: string;
+  language: VrLanguage;
+  videoUri: string | null;
+  createdAt: string;
+  syncStatus: SyncStatus;
+}
+
+export type EducationSessionStatus = 'scheduled' | 'completed' | 'cancelled';
+export type AttendanceStatus = 'unmarked' | 'present' | 'absent';
+
+export interface EducationSession {
+  id: string;
+  title: string;
+  moduleId: string;
+  language: VrLanguage;
+  scheduledAt: string;
+  durationMinutes: number;
+  location: string;
+  maxCapacity: number;
+  status: EducationSessionStatus;
+  facilityId: string;
+  followUpToId: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus: SyncStatus;
+}
+
+export interface EducationAttendance {
+  id: string;
+  sessionId: string;
+  patientId: string;
+  status: AttendanceStatus;
+  markedBy: string | null;
+  markedAt: string | null;
+  syncStatus: SyncStatus;
+}
 
 export interface VrModule {
   id: string;
@@ -257,6 +298,7 @@ export interface TeamMember {
   /** Team lead renders at the top of the structure chart. */
   isLead: boolean;
   displayOrder: number;
+  isActive: boolean;
 }
 
 export interface MediaAsset {

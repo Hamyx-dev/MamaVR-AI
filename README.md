@@ -19,7 +19,8 @@ cloud synchronization.
 | **Patient Management** | Registration with **photo upload**, multi-key search (name, phone, ID, NHIS), pregnancy & medical history, ANC visit records |
 | **Clinical Calculations** | Automatic gestational age, EDD (Naegele's rule), BMI, maternal age, WHO eight-contact review scheduling |
 | **AI Decision Support** | Deterministic, explainable rule engine (pre-eclampsia, eclampsia, anaemia, bleeding, fever/malaria, fetal compromise, gestational diabetes, obstetric history, maternal age, BMI). Every alert lists evidence, explanation, recommended actions, guideline source and a data-completeness confidence indicator |
-| **VR Education** | Seven built-in modules (§7.4) with **admin-uploaded lesson videos and thumbnails**, immersive full-screen player, play/pause/replay, subtitles, language switching (English/Dagbani), progress tracking, guided-narration fallback when no video is uploaded yet |
+| **VR Education** | Seven built-in modules (§7.4) with **admin-uploaded, language-specific lesson videos and thumbnails**, full-screen video player, play/pause/replay and progress tracking. Missing language versions are shown as unavailable rather than substituted |
+| **Maternal Education Sessions** | Language-specific lesson videos, facility-scoped group scheduling (maximum 20), patient rosters, attendance, follow-up sessions, conflict/capacity checks, and offline-first sync |
 | **Referrals & Follow-up** | Auto-populated referral forms from AI assessments, WHO-schedule follow-up generation, overdue alerts |
 | **Administration** | User management (create/suspend/reactivate/reset password, **avatar upload**), facility management (**logo upload**), VR content manager (**video/thumbnail upload**, publish new modules), analytics dashboard, audit logs, **branding logo upload** |
 | **Offline-First Sync** | Records are stored locally in SQLite first, flagged `pending`, then synchronized bidirectionally with Supabase Postgres (REST) and private Storage |
@@ -140,9 +141,23 @@ npm start          # Expo dev server — press "a" for Android
 npm run typecheck  # TypeScript validation
 ```
 
+### Web preview
+
+SQLite on web requires cross-origin isolation. Build and serve the static bundle with the included preview server:
+
+```bash
+npm run web:build
+npm run web:serve
+```
+
+The preview server sets `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp`. Configure equivalent headers on
+your production web host; the Expo development server does not set them for the
+SQLite worker.
+
 ### Supabase setup
 
-1. Create a Supabase project and apply [`supabase/migrations/202610210001_initial_schema.sql`](./supabase/migrations/202610210001_initial_schema.sql) in the Supabase SQL Editor.
+1. Create a Supabase project and apply the migrations in `supabase/migrations` in version order. This includes the initial schema, education scheduling tables/RLS, and scheduling guard triggers. For an already-linked project, use `supabase db push` to apply pending migrations.
 2. Add the project URL and anon/public key to the root `.env` file:
 
 ```
@@ -175,6 +190,10 @@ The anon/publishable key is intended for client apps; the migration's Row Level 
 
 Local records remain available offline after sign-in and queue changes until synchronization. First-time sign-in requires a network connection. Do not use real patient information until policies, account provisioning, retention, backups and local-device protections are reviewed for your deployment.
 
+### Maternal education sessions
+
+Administrators upload each lesson's English and Dagbani videos separately in **Admin → VR Content**. Only uploaded language versions appear as playable or schedulable. No maternal lesson videos are bundled with this repository; a session cannot be saved until its selected lesson/language video is available on the device. Group members are selected at the worker's facility, stored as patient IDs, and protected by facility-scoped RLS. Attendance is unique per patient/session and is synchronized with the session roster.
+
 ## Security and Data Protection
 
 - Supabase Auth handles sign-in; the app uses the public/anon client key and authenticated user
@@ -189,6 +208,10 @@ Local records remain available offline after sign-in and queue changes until syn
 - SQLite and the saved mobile auth session are not protected by SQLCipher or a dedicated secrets
   vault in this version. Device access controls, encryption at rest, backup/retention rules,
   privacy governance and clinical validation are required before production use.
+- The current data/service layer uses synchronous SQLite calls throughout. The web bundle builds,
+   but the Expo SQLite web worker currently times out during those calls in the browser. Use the
+   native Android/iOS app for operational workflows until the data layer is converted to async
+   storage APIs and desktop-browser behavior is verified.
 
 ## Clinical Safety & Governance
 

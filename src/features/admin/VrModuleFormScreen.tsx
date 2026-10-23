@@ -45,15 +45,15 @@ export function VrModuleFormScreen() {
       videoUri,
       thumbnailUri,
     });
-    Alert.alert('Module Published', `"${module.title}" is now available in the VR education library.`, [
+    Alert.alert('Lesson Published', `"${module.title}" is now available in the maternal education library.`, [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
   };
 
   return (
     <Screen>
-      <ScreenTitle subtitle="Educational content should be reviewed by clinical experts before publication (§7.11).">
-        Publish VR Module
+      <ScreenTitle subtitle="Maternal education content should be reviewed by qualified clinicians before publication.">
+        Publish Education Lesson
       </ScreenTitle>
       <Card>
         <Field label="Module Title *" value={title} onChangeText={setTitle} placeholder="e.g. Breastfeeding Basics" />
@@ -72,7 +72,7 @@ export function VrModuleFormScreen() {
           ownerType="vr_video"
           value={videoUri}
           onChange={setVideoUri}
-          helper="MP4 recommended. Without a video the lesson plays as guided narration."
+          helper="MP4 recommended. A lesson cannot be played or scheduled until a video is uploaded for its language."
         />
         <MediaPicker
           label="Thumbnail Image"

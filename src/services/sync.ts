@@ -19,15 +19,18 @@ import {
 
 const SYNC_TABLES = [
   { name: 'facilities', json: [], booleans: [] },
-  { name: 'team_members', json: ['responsibilities'], booleans: ['is_lead'] },
+  { name: 'team_members', json: ['responsibilities'], booleans: ['is_lead', 'is_active'] },
   { name: 'vr_modules', json: ['key_messages', 'languages'], booleans: ['is_builtin'] },
   { name: 'media_assets', json: [], booleans: ['uploaded'] },
+  { name: 'vr_lesson_media', json: [], booleans: [] },
   { name: 'branding_settings', json: [], booleans: [] },
   { name: 'patients', json: ['medical_history'], booleans: [] },
   { name: 'anc_visits', json: ['vitals', 'symptoms', 'fetal', 'labs'], booleans: [] },
   { name: 'assessments', json: ['findings', 'missing_data'], booleans: [] },
   { name: 'referrals', json: [], booleans: [] },
   { name: 'follow_ups', json: [], booleans: [] },
+  { name: 'education_sessions', json: [], booleans: [] },
+  { name: 'education_session_attendance', json: [], booleans: [] },
   { name: 'vr_sessions', json: [], booleans: ['completed'] },
   { name: 'audit_logs', json: [], booleans: [] },
 ] as const;
@@ -58,13 +61,20 @@ export interface SyncStatusSummary {
   cloudConfigured: boolean;
 }
 
-export function getSyncStatus(): SyncStatusSummary {
+export function getSyncStatus(userId?: string): SyncStatusSummary {
   let pendingRecords = 0;
   for (const { name } of SYNC_TABLES) {
     if (name === 'media_assets') continue;
-    const row = db.getFirstSync<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM ${name} WHERE sync_status = 'pending'`
-    );
+    const row =
+      name === 'audit_logs' && userId
+        ? db.getFirstSync<{ n: number }>(
+            `SELECT COUNT(*) AS n FROM audit_logs
+             WHERE sync_status = 'pending' AND (user_id IS NULL OR user_id = ?)`,
+            [userId]
+          )
+        : db.getFirstSync<{ n: number }>(
+            `SELECT COUNT(*) AS n FROM ${name} WHERE sync_status = 'pending'`
+          );
     pendingRecords += row?.n ?? 0;
   }
   return {
@@ -231,14 +241,21 @@ async function uploadPendingMedia(user: User): Promise<number> {
 
 async function syncTable(
   name: string,
-  options: { pull?: boolean; ignoreDuplicates?: boolean; push?: boolean } = {}
+  options: {
+    pull?: boolean;
+    ignoreDuplicates?: boolean;
+    push?: boolean;
+    pendingFilter?: (row: Record<string, unknown>) => boolean;
+  } = {}
 ): Promise<{ pushed: number; pulled: number }> {
   const pending =
     options.push === false
       ? []
-      : db.getAllSync<Record<string, unknown>>(
-          `SELECT * FROM ${name} WHERE sync_status = 'pending'`
-        );
+      : db
+          .getAllSync<Record<string, unknown>>(
+            `SELECT * FROM ${name} WHERE sync_status = 'pending'`
+          )
+          .filter(options.pendingFilter ?? (() => true));
   if (options.push === false) {
     db.runSync(`UPDATE ${name} SET sync_status = 'synced' WHERE sync_status = 'pending'`);
   }
@@ -386,7 +403,23 @@ export type SyncResult =
   | { ok: true; recordsSynced: number; mediaSynced: number }
   | { ok: false; error: string };
 
-export async function syncNow(user: User): Promise<SyncResult> {
+let activeSync: { userId: string; task: Promise<SyncResult> } | null = null;
+
+export function syncNow(user: User): Promise<SyncResult> {
+  if (activeSync) {
+    return activeSync.userId === user.id
+      ? activeSync.task
+      : activeSync.task.then(() => syncNow(user));
+  }
+
+  const task = runSync(user).finally(() => {
+    if (activeSync?.task === task) activeSync = null;
+  });
+  activeSync = { userId: user.id, task };
+  return task;
+}
+
+async function runSync(user: User): Promise<SyncResult> {
   if (!isSupabaseConfigured()) {
     return {
       ok: false,
@@ -406,7 +439,11 @@ export async function syncNow(user: User): Promise<SyncResult> {
         ignoreDuplicates: name === 'audit_logs',
         push:
           user.role === 'admin' ||
-          !['facilities', 'team_members', 'vr_modules', 'branding_settings'].includes(name),
+          !['facilities', 'team_members', 'vr_modules', 'vr_lesson_media', 'branding_settings'].includes(name),
+        pendingFilter:
+          name === 'audit_logs'
+            ? (row) => row.user_id === null || row.user_id === user.id
+            : undefined,
       });
       recordsSynced += result.pushed + result.pulled;
       if (name === 'media_assets') {

@@ -28,14 +28,14 @@ export function HealthcareDashboard() {
   const [syncing, setSyncing] = useState(false);
 
   const refresh = useCallback(() => {
-    const sync = getSyncStatus();
+    const sync = getSyncStatus(user?.id);
     setStats({
       visits: countVisitsToday(),
       highRisk: countHighRiskPatients(),
       referrals: countPendingReferrals(),
       pendingSync: sync.pendingRecords + sync.pendingMedia,
     });
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(refresh);
 
@@ -122,6 +122,12 @@ export function HealthcareDashboard() {
         icon="search-outline"
         variant="secondary"
         onPress={() => navigation.navigate('Tabs')}
+      />
+      <Button
+        title="Maternal Education & Sessions"
+        icon="videocam-outline"
+        variant="secondary"
+        onPress={() => navigation.navigate('EducationHome')}
       />
       <View style={styles.rowButtons}>
         <Button

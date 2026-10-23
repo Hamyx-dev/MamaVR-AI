@@ -9,6 +9,7 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card, EmptyState, Screen, ScreenTitle } from '@/components/ui';
+import { useAuth } from '@/hooks/useAuth';
 import { listHighRiskPatients } from '@/services/assessments';
 import { listUpcomingFollowUps } from '@/services/referrals';
 import { getSyncStatus } from '@/services/sync';
@@ -31,6 +32,7 @@ interface NotificationItem {
 
 export function NotificationsScreen() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation<Nav>();
   const [items, setItems] = useState<NotificationItem[]>([]);
 
@@ -60,7 +62,7 @@ export function NotificationsScreen() {
         });
       }
     }
-    const sync = getSyncStatus();
+    const sync = getSyncStatus(user?.id);
     const pending = sync.pendingRecords + sync.pendingMedia;
     if (pending > 0) {
       list.push({
@@ -71,7 +73,7 @@ export function NotificationsScreen() {
       });
     }
     setItems(list);
-  }, [navigation]);
+  }, [navigation, user?.id]);
 
   useFocusEffect(build);
 

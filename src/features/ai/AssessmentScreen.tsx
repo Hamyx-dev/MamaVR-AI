@@ -7,10 +7,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button, Card, EmptyState, RiskBadge, Screen, ScreenTitle } from '@/components/ui';
 import { confidenceLabel } from '@/ai/engine';
 import { getAssessment } from '@/services/assessments';
-import { getVrModule } from '@/services/vr';
+import { getVrModule, listAvailableLessonLanguages } from '@/services/vr';
 import { useTheme } from '@/theme/ThemeContext';
 import { radius, spacing, typography } from '@/theme/theme';
-import { RiskLevel } from '@/types';
+import { RiskLevel, VR_LANGUAGE_LABELS } from '@/types';
 import { MainStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
@@ -70,6 +70,7 @@ export function AssessmentScreen() {
   }
 
   const vrModule = getVrModule(assessment.recommendedVrModuleId);
+  const availableLessonLanguages = vrModule ? listAvailableLessonLanguages(vrModule.id) : [];
   const primaryFinding = assessment.findings[0] ?? null;
 
   return (
@@ -161,7 +162,7 @@ export function AssessmentScreen() {
       {vrModule ? (
         <Card>
           <Text style={{ fontSize: typography.caption, color: theme.colors.textSecondary }}>
-            Recommended VR Education
+            Recommended Education Video
           </Text>
           <Text style={{ fontSize: typography.cardTitle, fontWeight: '700', color: theme.colors.text, marginTop: 2 }}>
             {vrModule.title}
@@ -169,19 +170,28 @@ export function AssessmentScreen() {
           <Text style={{ fontSize: typography.caption, color: theme.colors.textSecondary, marginTop: 2 }}>
             {vrModule.purpose} (~{vrModule.durationMinutes} min)
           </Text>
-          <Button
-            title="Launch VR Education"
-            icon="glasses-outline"
-            style={{ marginTop: spacing.sm }}
-            onPress={() =>
-              navigation.navigate('VrPlayer', {
-                moduleId: vrModule.id,
-                language: 'en',
-                patientId: assessment.patientId,
-                visitId: assessment.visitId,
-              })
-            }
-          />
+          {availableLessonLanguages.length > 0 ? (
+            availableLessonLanguages.map((language) => (
+              <Button
+                key={language}
+                title={`Play ${VR_LANGUAGE_LABELS[language]} Video`}
+                icon="videocam-outline"
+                style={{ marginTop: spacing.sm }}
+                onPress={() =>
+                  navigation.navigate('VrPlayer', {
+                    moduleId: vrModule.id,
+                    language,
+                    patientId: assessment.patientId,
+                    visitId: assessment.visitId,
+                  })
+                }
+              />
+            ))
+          ) : (
+            <Text style={{ color: theme.colors.textSecondary, fontSize: typography.caption, marginTop: spacing.sm }}>
+              No video has been uploaded for this lesson yet. Browse the video library for available education content.
+            </Text>
+          )}
         </Card>
       ) : null}
 

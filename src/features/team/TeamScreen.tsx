@@ -5,17 +5,21 @@
  * in place of the document's "[Insert Photo Here]" placeholders.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 
 import { MediaPicker } from '@/components/MediaPicker';
-import { Button, Card, Screen, ScreenTitle, SectionHeading } from '@/components/ui';
+import { Button, Card, EmptyState, Screen, ScreenTitle, SectionHeading } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { listTeamMembers, updateTeamMemberPhoto } from '@/services/team';
+import { MainStackParamList } from '@/navigation/types';
+import { listTeamMembers, removeTeamMember, updateTeamMemberPhoto } from '@/services/team';
 import { useTheme } from '@/theme/ThemeContext';
 import { radius, spacing, typography } from '@/theme/theme';
 import { TeamMember } from '@/types';
+
+type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 function StructureNode({ member, compact }: { member: TeamMember; compact?: boolean }) {
   const { theme } = useTheme();
@@ -65,6 +69,7 @@ function StructureNode({ member, compact }: { member: TeamMember; compact?: bool
 export function TeamScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const navigation = useNavigation<Nav>();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [editingPhotoFor, setEditingPhotoFor] = useState<string | null>(null);
   const isAdmin = user?.role === 'admin';
@@ -75,11 +80,45 @@ export function TeamScreen() {
   const lead = members.find((member) => member.isLead);
   const others = members.filter((member) => !member.isLead);
 
+  const handleRemove = (member: TeamMember) => {
+    if (!user) return;
+    Alert.alert(
+      'Remove Team Member',
+      `Remove ${member.name} from the Project Team?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            try {
+              removeTeamMember(user, member.id);
+              refresh();
+            } catch (error) {
+              Alert.alert(
+                'Unable to Remove',
+                error instanceof Error ? error.message : 'Please try again.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <Screen>
       <ScreenTitle subtitle="A multidisciplinary team combining expertise in healthcare, software engineering, cloud computing, and community engagement to deliver a practical, user-centred solution for maternal and child healthcare.">
         Project Team
       </ScreenTitle>
+
+      {isAdmin ? (
+        <Button
+          title="Add Team Member"
+          icon="person-add-outline"
+          onPress={() => navigation.navigate('TeamMemberForm')}
+        />
+      ) : null}
 
       {lead ? (
         <>
@@ -98,6 +137,13 @@ export function TeamScreen() {
       ) : null}
 
       <SectionHeading>Profiles</SectionHeading>
+      {members.length === 0 ? (
+        <EmptyState
+          icon="people-outline"
+          title="No Team Members"
+          message="Add the first team member to build the project team."
+        />
+      ) : null}
       {members.map((member) => (
         <Card key={member.id}>
           <View style={styles.profileRow}>
@@ -165,6 +211,14 @@ export function TeamScreen() {
                 style={{ marginTop: spacing.sm }}
               />
             )
+          ) : null}
+          {isAdmin ? (
+            <Button
+              title="Remove from Team"
+              variant="danger"
+              icon="trash-outline"
+              onPress={() => handleRemove(member)}
+            />
           ) : null}
         </Card>
       ))}
